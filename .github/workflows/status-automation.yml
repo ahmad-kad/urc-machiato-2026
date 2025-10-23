@@ -2,7 +2,7 @@ name: Project Status Automation
 
 on:
   issues:
-    types: [opened, closed, labeled]
+    types: [opened, closed, labeled, unlabeled]
   pull_request_target:
     types: [opened, closed, ready_for_review, converted_to_draft, reopened]
 
@@ -15,11 +15,42 @@ jobs:
   set-status:
     runs-on: ubuntu-latest
     steps:
-      - name: Sync status - placeholder
+      - name: Determine issue/PR state
+        id: state
         run: |
-          echo "Status automation rules are implemented via Project workflows and labels."
-          echo "- issue opened => status:todo"
-          echo "- PR opened/ready_for_review => status:in-review"
-          echo "- blocked label => status:blocked"
-          echo "- issue closed/PR merged => status:done"
+          if [ "${{ github.event_name }}" == "issues" ]; then
+            if [ "${{ github.event.action }}" == "closed" ]; then
+              echo "status_label=status:done" >> $GITHUB_OUTPUT
+              echo "reason=Issue closed" >> $GITHUB_OUTPUT
+            elif [ "${{ github.event.action }}" == "opened" ]; then
+              echo "status_label=status:todo" >> $GITHUB_OUTPUT
+              echo "reason=Issue opened" >> $GITHUB_OUTPUT
+            fi
+          fi
+          
+          if [ "${{ github.event_name }}" == "pull_request_target" ]; then
+            if [ "${{ github.event.pull_request.state }}" == "closed" ]; then
+              echo "status_label=status:done" >> $GITHUB_OUTPUT
+              echo "reason=PR merged/closed" >> $GITHUB_OUTPUT
+            elif [ "${{ github.event.action }}" == "ready_for_review" ]; then
+              echo "status_label=status:in-review" >> $GITHUB_OUTPUT
+              echo "reason=PR ready for review" >> $GITHUB_OUTPUT
+            elif [ "${{ github.event.action }}" == "opened" ]; then
+              echo "status_label=status:in-progress" >> $GITHUB_OUTPUT
+              echo "reason=PR opened" >> $GITHUB_OUTPUT
+            fi
+          fi
+      - name: Log status automation
+        run: |
+          echo "📊 Status Update:"
+          echo "   Event: ${{ github.event_name }}"
+          echo "   Action: ${{ github.event.action }}"
+          echo "   Status Label: ${{ steps.state.outputs.status_label }}"
+          echo "   Reason: ${{ steps.state.outputs.reason }}"
+          echo ""
+          echo "ℹ️ Status automation is label-driven:"
+          echo "   - Issue opened → status:todo"
+          echo "   - PR opened/ready_for_review → status:in-review"
+          echo "   - Issue/PR closed → status:done"
+          echo "   - Add 'status:blocked' label manually to block items"
 

@@ -16,10 +16,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate labels.yml exists
+        run: |
+          if [ ! -f .github/labels.yml ]; then
+            echo "❌ Error: .github/labels.yml not found"
+            exit 1
+          fi
+          echo "✅ .github/labels.yml found"
       - name: Apply labels from .github/labels.yml
         uses: crazy-max/ghaction-github-labeler@v5
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           yaml-file: .github/labels.yml
           dry-run: false
+      - name: Log label sync result
+        run: echo "✅ Labels synced successfully from .github/labels.yml"
 
