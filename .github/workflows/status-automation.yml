@@ -1,0 +1,25 @@
+name: Project Status Automation
+
+on:
+  issues:
+    types: [opened, closed, labeled]
+  pull_request_target:
+    types: [opened, closed, ready_for_review, converted_to_draft, reopened]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  set-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync status - placeholder
+        run: |
+          echo "Status automation rules are implemented via Project workflows and labels."
+          echo "- issue opened => status:todo"
+          echo "- PR opened/ready_for_review => status:in-review"
+          echo "- blocked label => status:blocked"
+          echo "- issue closed/PR merged => status:done"
+

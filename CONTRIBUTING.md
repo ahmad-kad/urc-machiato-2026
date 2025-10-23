@@ -131,6 +131,15 @@ python tests/integration_test.py
 4. **Get review** from at least one team member
 5. **Merge** using squash commits for clean history
 
+## 📊 Project Board & Workflow
+
+- User-level project: Robotics 2025 Kanban
+- Project link: https://github.com/users/ahmad-kad/projects/5
+- Use issue templates (Task, Bug, Epic, Visual Artifact)
+- Add `area:*`, `priority:*`, and `visual-artifact` labels as relevant
+- TODO comments in `Autonomy/**` will open/update issues
+- New issues/PRs auto-add to the project; use `Fixes #<id>` to close and move to Done
+
 ### PR Template
 
 All PRs must include:
