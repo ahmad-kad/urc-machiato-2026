@@ -6,7 +6,8 @@ This script:
 1. Finds all *_TODO.md files in Autonomy/
 2. Parses checkbox items (- [ ] and - [x])
 3. Creates GitHub issues for unchecked items
-4. Labels them with area and type:task
+4. Adds them directly to the project board
+5. Labels them with area and type:task
 """
 
 import os
@@ -112,19 +113,26 @@ class TodoExtractor:
 
 
 class GitHubIssueCreator:
-    """Create GitHub issues from TODO items."""
+    """Create GitHub issues from TODO items and add to project."""
 
-    def __init__(self, token: str, owner: str, repo: str):
+    def __init__(self, token: str, owner: str, repo: str, project_number: int = 5):
         self.token = token
         self.owner = owner
         self.repo = repo
+        self.project_number = project_number
         self.base_url = f"https://api.github.com/repos/{owner}/{repo}"
+        self.graphql_url = "https://api.github.com/graphql"
         self.headers = {
             "Authorization": f"token {token}",
             "Accept": "application/vnd.github.v3+json"
         }
+        self.graphql_headers = {
+            "Authorization": f"token {token}",
+            "Content-Type": "application/json"
+        }
         self.created_count = 0
         self.skipped_count = 0
+        self.added_to_project_count = 0
 
     def issue_exists(self, title: str) -> bool:
         """Check if an issue with this title already exists."""
@@ -140,6 +148,68 @@ class GitHubIssueCreator:
             return resp.json().get("total_count", 0) > 0
         except Exception as e:
             print(f"   ⚠️ Error checking existing issues: {e}")
+            return False
+
+    def add_issue_to_project(self, issue_id: str) -> bool:
+        """Add issue to project board via GraphQL."""
+        query = """
+        mutation($projectId: ID!, $contentId: ID!) {
+          addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+            item {
+              id
+            }
+          }
+        }
+        """
+        
+        # First, get the project ID
+        project_query = """
+        query($owner: String!, $number: Int!) {
+          user(login: $owner) {
+            projectV2(number: $number) {
+              id
+            }
+          }
+        }
+        """
+        
+        try:
+            # Get project ID
+            proj_resp = requests.post(
+                self.graphql_url,
+                headers=self.graphql_headers,
+                json={"query": project_query, "variables": {"owner": self.owner, "number": self.project_number}},
+                timeout=10
+            )
+            
+            if proj_resp.status_code != 200:
+                print(f"      ⚠️ Failed to get project ID: {proj_resp.text}")
+                return False
+            
+            proj_data = proj_resp.json()
+            if "errors" in proj_data or not proj_data.get("data", {}).get("user", {}).get("projectV2"):
+                print(f"      ⚠️ Project not found or access denied")
+                return False
+            
+            project_id = proj_data["data"]["user"]["projectV2"]["id"]
+            
+            # Add issue to project
+            add_resp = requests.post(
+                self.graphql_url,
+                headers=self.graphql_headers,
+                json={"query": query, "variables": {"projectId": project_id, "contentId": issue_id}},
+                timeout=10
+            )
+            
+            if add_resp.status_code == 200:
+                add_data = add_resp.json()
+                if "errors" not in add_data:
+                    self.added_to_project_count += 1
+                    return True
+            
+            return False
+        except Exception as e:
+            print(f"      ⚠️ Error adding to project: {e}")
             return False
 
     def create_issue(self, todo: dict) -> bool:
@@ -161,8 +231,15 @@ class GitHubIssueCreator:
             resp = requests.post(url, headers=self.headers, json=payload, timeout=10)
             if resp.status_code == 201:
                 issue = resp.json()
-                print(f"   ✅ Created issue #{issue['number']}: {todo['title'][:60]}...")
+                issue_num = issue['number']
+                issue_id = issue['node_id']
+                print(f"   ✅ Created issue #{issue_num}: {todo['title'][:60]}...")
                 self.created_count += 1
+                
+                # Try to add to project
+                if self.add_issue_to_project(issue_id):
+                    print(f"      → Added to project board")
+                
                 return True
             else:
                 print(f"   ❌ Failed to create issue: {resp.status_code} - {resp.text}")
@@ -174,7 +251,8 @@ class GitHubIssueCreator:
     def create_all(self, todos: List[dict]) -> dict:
         """Create issues for all TODOs."""
         print(f"\n🚀 Creating issues (token auth: {'✅' if self.token else '❌'})")
-        print(f"   Repository: {self.owner}/{self.repo}\n")
+        print(f"   Repository: {self.owner}/{self.repo}")
+        print(f"   Project: users/{self.owner}/projects/{self.project_number}\n")
 
         for i, todo in enumerate(todos, 1):
             print(f"[{i}/{len(todos)}] {todo['section']} → {todo['area']}")
@@ -182,6 +260,7 @@ class GitHubIssueCreator:
 
         return {
             "created": self.created_count,
+            "added_to_project": self.added_to_project_count,
             "skipped": self.skipped_count,
             "total": len(todos)
         }
@@ -208,7 +287,7 @@ def main():
 
     print(f"\n📊 Total unchecked items: {len(todos)}\n")
 
-    # Create issues
+    # Create issues and add to project
     creator = GitHubIssueCreator(token, owner, repo_name)
     result = creator.create_all(todos)
 
@@ -216,6 +295,7 @@ def main():
     print(f"\n{'='*60}")
     print(f"📈 Summary:")
     print(f"   Created: {result['created']} new issues")
+    print(f"   Added to project: {result['added_to_project']} items")
     print(f"   Skipped: {result['skipped']} (already exist)")
     print(f"   Total:   {result['total']} items processed")
     print(f"{'='*60}\n")
