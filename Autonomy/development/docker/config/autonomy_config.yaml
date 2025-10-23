@@ -1,0 +1,246 @@
+# Autonomy System Configuration
+# Shared configuration for all ROS 2 nodes
+
+# ROS 2 Settings
+ros:
+  domain_id: 42
+  automatic_discovery_range: LOCALHOST
+  qos:
+    reliability: RELIABLE
+    durability: VOLATILE
+    history: KEEP_LAST
+    depth: 10
+
+# System Identification
+team:
+  name: "UCR Robotics"
+  year: 2026
+  robot_name: "Mars Rover"
+
+# Navigation Configuration
+navigation:
+  # GNSS Settings
+  gnss:
+    datum: "WGS84"
+    update_rate: 10  # Hz
+    accuracy_threshold: 3.0  # meters for GNSS-only targets
+    rtk_enabled: true
+
+  # Path Planning
+  planning:
+    algorithm: "A*"  # Options: A*, RRT, Dijkstra
+    resolution: 0.1  # meters
+    safety_margin: 0.5  # meters
+    max_velocity: 2.0  # m/s
+
+  # Terrain Classification
+  terrain:
+    classes: ["sand", "rock", "gravel", "slope"]
+    traversability_threshold: 0.7
+    update_rate: 5  # Hz
+
+# SLAM Configuration
+slam:
+  # Sensor Fusion
+  sensors:
+    - type: "lidar"
+      topic: "/scan"
+      update_rate: 10
+    - type: "imu"
+      topic: "/imu/data"
+      update_rate: 100
+    - type: "odometry"
+      topic: "/odom"
+      update_rate: 50
+
+  # Mapping
+  mapping:
+    resolution: 0.05  # meters
+    width: 100  # meters
+    height: 100  # meters
+    origin_x: -50
+    origin_y: -50
+
+  # Loop Closure
+  loop_closure:
+    enabled: true
+    distance_threshold: 2.0  # meters
+    angle_threshold: 0.2  # radians
+
+# Computer Vision Configuration
+computer_vision:
+  # Camera Settings
+  cameras:
+    rgb_depth:
+      topic: "/camera/rgb_depth"
+      resolution: [640, 480]
+      fps: 30
+      depth_range: [0.3, 10.0]  # meters
+    navigation:
+      topic: "/camera/navigation"
+      resolution: [1920, 1080]
+      fps: 15
+
+  # Object Detection
+  detection:
+    model: "yolov5s"
+    confidence_threshold: 0.5
+    classes: ["mallet", "hammer", "bottle"]
+    max_detections: 10
+
+  # ArUco Detection
+  aruco:
+    dictionary: "DICT_4X4_50"
+    marker_size: 0.2  # meters
+    detection_parameters:
+      adaptiveThreshWinSizeMin: 3
+      adaptiveThreshWinSizeMax: 23
+      adaptiveThreshWinSizeStep: 10
+
+# Autonomous Typing Configuration
+autonomous_typing:
+  # Keyboard Detection
+  keyboard:
+    aruco_markers: [0, 1, 2, 3]  # Marker IDs for keyboard corners
+    expected_layout: "QWERTY"
+    key_spacing: 0.019  # meters between key centers
+
+  # Robotic Arm
+  arm:
+    type: "6DOF"
+    reach: 0.8  # meters
+    precision: 0.001  # meters
+    max_payload: 2.0  # kg
+
+  # Typing Parameters
+  typing:
+    press_force: 2.0  # Newtons
+    press_duration: 0.2  # seconds
+    approach_speed: 0.1  # m/s
+    retreat_speed: 0.1  # m/s
+
+# State Management Configuration
+state_management:
+  # Mode Transitions
+  transitions:
+    autonomous_to_teleop_timeout: 5.0  # seconds
+    teleop_to_autonomous_delay: 2.0  # seconds
+    emergency_stop_response: 0.1  # seconds
+
+  # Mission Parameters
+  mission:
+    duration_limit: 1800  # seconds (30 minutes)
+    target_timeout: 300  # seconds per target
+    communication_timeout: 30  # seconds
+
+  # Health Monitoring
+  health:
+    update_rate: 1  # Hz
+    critical_threshold: 0.8  # 80% health
+    warning_threshold: 0.9  # 90% health
+
+# LED Status Configuration
+led_status:
+  # Hardware Settings
+  hardware:
+    type: "RGB_LED"
+    pins: [17, 18, 19]  # Red, Blue, Green GPIO pins
+    pwm_frequency: 1000  # Hz
+
+  # Status Definitions
+  states:
+    autonomous:
+      color: "red"
+      pattern: "solid"
+    teleoperation:
+      color: "blue"
+      pattern: "solid"
+    target_success:
+      color: "green"
+      pattern: "blinking"
+      frequency: 2  # Hz
+    error:
+      color: "red"
+      pattern: "blinking"
+      frequency: 5  # Hz
+
+# Environmental Adaptation
+environmental:
+  # Temperature Compensation
+  temperature:
+    operating_range: [-10, 50]  # Celsius
+    calibration_update_interval: 3600  # seconds
+    thermal_shutdown_threshold: 70  # Celsius
+
+  # Dust Mitigation
+  dust:
+    sensor_cleaning_interval: 1800  # seconds
+    filter_update_threshold: 0.7  # opacity
+    backup_sensor_timeout: 30  # seconds
+
+  # Wind Compensation
+  wind:
+    speed_compensation_threshold: 5  # m/s
+    stability_check_interval: 1  # seconds
+    emergency_stop_threshold: 15  # m/s
+
+# Data Management
+data:
+  # Logging
+  logging:
+    level: "INFO"
+    max_file_size: 100  # MB
+    retention_days: 30
+    compress_old_logs: true
+
+  # Storage
+  storage:
+    workspace_path: "/workspace"
+    data_path: "/workspace/data"
+    models_path: "/workspace/models"
+    calibration_path: "/workspace/calibration"
+
+  # Backup
+  backup:
+    enabled: true
+    interval: 3600  # seconds
+    max_backups: 10
+    remote_sync: false
+
+# Network Configuration
+network:
+  # ROS 2 DDS Settings
+  dds:
+    implementation: "rmw_cyclonedds_cpp"
+    discovery:
+      multicast: true
+      unicast: ["127.0.0.1:11811"]
+
+  # External Communication
+  external:
+    primary_interface: "wlan0"
+    backup_interface: "eth0"
+    frequency_bands: ["900MHz", "2.4GHz", "5.8GHz"]
+    max_range: 1000  # meters
+
+# Safety Systems
+safety:
+  # Emergency Stop
+  emergency_stop:
+    enabled: true
+    gpio_pin: 4
+    debounce_time: 0.1  # seconds
+    hold_time: 2.0  # seconds
+
+  # Heartbeat Monitoring
+  heartbeat:
+    timeout: 5.0  # seconds
+    check_interval: 1.0  # seconds
+    auto_recovery: true
+
+  # Geofencing
+  geofence:
+    enabled: true
+    boundary_file: "/workspace/config/geofence.yaml"
+    violation_response: "stop"
+    warning_distance: 50  # meters

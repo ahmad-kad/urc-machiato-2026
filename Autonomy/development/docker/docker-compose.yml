@@ -1,0 +1,152 @@
+version: '3.8'
+
+services:
+  # ROS 2 Core Service
+  ros2-core:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ros2-core
+    container_name: autonomy_ros2_core
+    command: bash -c "source /opt/ros/humble/setup.bash && ros2 daemon start && sleep infinity"
+    networks:
+      - autonomy_network
+    environment:
+      - ROS_DOMAIN_ID=42
+      - ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+    volumes:
+      - ros2_logs:/root/.ros/log
+    healthcheck:
+      test: ["CMD", "bash", "-c", "source /opt/ros/humble/setup.bash && timeout 5 ros2 node list > /dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Development Environment
+  autonomy-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    container_name: autonomy_development
+    depends_on:
+      ros2-core:
+        condition: service_healthy
+    networks:
+      - autonomy_network
+    environment:
+      - ROS_DOMAIN_ID=42
+      - ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+      - DISPLAY=${DISPLAY}
+    volumes:
+      - ../../:/workspace:cached
+      - ./data:/workspace/data:cached
+      - ./models:/workspace/models:cached
+      - ./calibration:/workspace/calibration:cached
+      - ros2_ws:/workspace/ros2_ws:cached
+      - ~/.ssh:/home/ros/.ssh:ro
+      - ~/.gitconfig:/home/ros/.gitconfig:ro
+    devices:
+      - /dev/dri:/dev/dri
+      # Hardware access for robotics tasks
+      - /dev/ttyUSB0:/dev/ttyUSB0  # GPS/GNSS receiver
+      - /dev/ttyUSB1:/dev/ttyUSB1  # Robotic arm controller
+      - /dev/ttyACM0:/dev/ttyACM0  # IMU/Arduino devices
+      - /dev/i2c-1:/dev/i2c-1      # I2C sensors (IMU, etc.)
+      - /dev/spidev0.0:/dev/spidev0.0  # SPI devices
+    privileged: true  # Required for GPIO access on Raspberry Pi and hardware control
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    command: bash
+
+  # Simulation Environment
+  autonomy-sim:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.sim
+    container_name: autonomy_simulation
+    depends_on:
+      autonomy-dev:
+        condition: service_started
+    networks:
+      - autonomy_network
+    environment:
+      - ROS_DOMAIN_ID=42
+      - ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+      - DISPLAY=${DISPLAY}
+    volumes:
+      - ../../:/workspace:cached
+      - ./data:/workspace/data:cached
+      - ./models:/workspace/models:cached
+      - gazebo_logs:/root/.gazebo/log
+    devices:
+      - /dev/dri:/dev/dri
+      # Hardware access for mixed simulation/real hardware testing
+      - /dev/ttyUSB0:/dev/ttyUSB0  # GPS/GNSS receiver
+      - /dev/ttyACM0:/dev/ttyACM0  # IMU/Arduino devices
+    privileged: true  # Required for GPIO and hardware access
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    command: bash
+
+  # Computer Vision Service (Optional separate service)
+  vision-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.vision
+    container_name: autonomy_vision
+    depends_on:
+      ros2-core:
+        condition: service_healthy
+    networks:
+      - autonomy_network
+    environment:
+      - ROS_DOMAIN_ID=42
+      - ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    volumes:
+      - ../../:/workspace:cached
+      - ./data:/workspace/data:cached
+      - ./models:/workspace/models:cached
+      - ./calibration:/workspace/calibration:cached
+    devices:
+      - /dev/dri:/dev/dri
+    working_dir: /workspace
+    profiles:
+      - vision
+
+  # Database Service for Data Persistence
+  autonomy-db:
+    image: postgres:15-alpine
+    container_name: autonomy_database
+    environment:
+      - POSTGRES_DB=autonomy
+      - POSTGRES_USER=ros
+      - POSTGRES_PASSWORD=autonomy2026
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d
+    networks:
+      - autonomy_network
+    ports:
+      - "5432:5432"
+    profiles:
+      - db
+
+volumes:
+  ros2_ws:
+    driver: local
+  ros2_logs:
+    driver: local
+  gazebo_logs:
+    driver: local
+  postgres_data:
+    driver: local
+
+networks:
+  autonomy_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

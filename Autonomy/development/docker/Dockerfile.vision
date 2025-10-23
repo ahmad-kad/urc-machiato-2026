@@ -1,0 +1,97 @@
+# Computer Vision Service Dockerfile
+FROM autonomy:ros2-core
+
+# Switch to root for installation
+USER root
+
+# Install computer vision dependencies
+RUN apt-get update && apt-get install -y \
+    libopencv-dev \
+    python3-opencv \
+    python3-pil \
+    libjpeg-dev \
+    libpng-dev \
+    libtiff-dev \
+    libavcodec-dev \
+    libavformat-dev \
+    libswscale-dev \
+    libv4l-dev \
+    libxvidcore-dev \
+    libx264-dev \
+    libgtk-3-dev \
+    libatlas-base-dev \
+    gfortran \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install CUDA support for GPU acceleration
+RUN apt-get update && apt-get install -y \
+    nvidia-cuda-toolkit \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python ML packages
+RUN pip3 install \
+    torch \
+    torchvision \
+    torchaudio \
+    --index-url https://download.pytorch.org/whl/cu118 \
+    && rm -rf ~/.cache/pip
+
+# Install additional CV packages
+RUN pip3 install \
+    ultralytics \
+    pytorch-lightning \
+    albumentations \
+    scikit-image \
+    scikit-learn \
+    && rm -rf ~/.cache/pip
+
+# Install ROS 2 vision packages
+RUN apt-get update && apt-get install -y \
+    ros-humble-vision-msgs \
+    ros-humble-image-transport \
+    ros-humble-cv-bridge \
+    ros-humble-camera-calibration \
+    ros-humble-camera-info-manager \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install depth camera support
+RUN apt-get update && apt-get install -y \
+    ros-humble-depth-image-proc \
+    ros-humble-image-proc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Realsense SDK (if needed)
+RUN apt-get update && apt-get install -y \
+    ros-humble-realsense2-camera \
+    ros-humble-realsense2-description \
+    || true  # Don't fail if not available
+
+# Create vision workspace
+RUN mkdir -p /workspace/data/vision /workspace/models/vision /workspace/calibration/vision
+WORKDIR /workspace
+
+# Install vision models and datasets directory structure
+RUN mkdir -p /workspace/models/yolov5 /workspace/models/detection /workspace/data/datasets
+
+# Setup vision environment
+RUN echo "export PYTHONPATH=/workspace/vision:\$PYTHONPATH" >> ~/.bashrc
+
+# Switch back to ros user
+USER ros
+WORKDIR /workspace
+
+# Create vision utility scripts
+RUN mkdir -p /workspace/scripts/vision
+RUN echo '#!/bin/bash\n\
+source /opt/ros/humble/setup.bash\n\
+source /workspace/ros2_ws/install/setup.bash\n\
+export PYTHONPATH=/workspace:$PYTHONPATH\n\
+exec "$@"' > /workspace/scripts/vision/cv-service.sh && \
+    chmod +x /workspace/scripts/vision/cv-service.sh
+
+# Download pre-trained models (optional - can be done at runtime)
+RUN mkdir -p /workspace/models/pretrained
+# Note: Models can be downloaded at runtime to save image size
+
+# Default command for vision service
+CMD ["python3", "-c", "import torch; print('CUDA available:', torch.cuda.is_available())"]

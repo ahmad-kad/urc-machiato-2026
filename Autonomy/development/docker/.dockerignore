@@ -1,0 +1,64 @@
+# Git and version control
+.git
+.gitignore
+.gitmodules
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+venv
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.pytest_cache
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Build artifacts
+build/
+install/
+log/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Documentation builds
+docs/_build/
+
+# Test results
+test_results/
+*.xml
+
+# Data files (large files should be handled by Git LFS)
+# Uncomment if you want to exclude data directories from Docker context
+# data/
+# models/
+# calibration/

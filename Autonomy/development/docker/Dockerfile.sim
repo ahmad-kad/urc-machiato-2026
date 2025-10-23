@@ -1,0 +1,73 @@
+# Simulation Environment Dockerfile
+FROM autonomy:ros2-core
+
+# Switch to root for installation
+USER root
+
+# Install Gazebo Fortress
+RUN apt-get update && apt-get install -y wget && \
+    wget https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable jammy main" | tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
+
+RUN apt-get update && apt-get install -y \
+    gazebo \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install ROS 2 Gazebo integration
+RUN apt-get update && apt-get install -y \
+    ros-humble-gazebo-ros-pkgs \
+    ros-humble-gazebo-ros2-control \
+    ros-humble-xacro \
+    ros-humble-joint-state-publisher-gui \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install simulation-specific packages
+RUN apt-get update && apt-get install -y \
+    ros-humble-slam-toolbox \
+    ros-humble-navigation2 \
+    ros-humble-nav2-bringup \
+    ros-humble-tf-transformations \
+    python3-tk \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install additional simulation tools
+RUN pip3 install \
+    gym \
+    stable-baselines3 \
+    pybullet \
+    && rm -rf ~/.cache/pip
+
+# Create simulation directories
+RUN mkdir -p /workspace/models /workspace/worlds /workspace/data/simulation
+
+# Setup Gazebo environment
+RUN mkdir -p /home/ros/.gazebo/models
+ENV GAZEBO_MODEL_PATH=/workspace/models:/home/ros/.gazebo/models:${GAZEBO_MODEL_PATH}
+ENV GAZEBO_WORLD_PATH=/workspace/worlds:${GAZEBO_WORLD_PATH}
+
+# Install simulation data and models
+RUN apt-get update && apt-get install -y \
+    ros-humble-gazebo-msgs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Switch back to ros user
+USER ros
+WORKDIR /workspace
+
+# Setup simulation environment
+RUN echo "export GAZEBO_MODEL_PATH=/workspace/models:/home/ros/.gazebo/models:\${GAZEBO_MODEL_PATH}" >> ~/.bashrc && \
+    echo "export GAZEBO_WORLD_PATH=/workspace/worlds:\${GAZEBO_WORLD_PATH}" >> ~/.bashrc && \
+    echo "export GAZEBO_PLUGIN_PATH=/workspace/ros2_ws/install/lib:\${GAZEBO_PLUGIN_PATH}" >> ~/.bashrc
+
+# Create simulation launch scripts
+RUN mkdir -p /workspace/scripts
+RUN echo '#!/bin/bash\n\
+source /opt/ros/humble/setup.bash\n\
+source /workspace/ros2_ws/install/setup.bash\n\
+export GAZEBO_MODEL_PATH=/workspace/models:$GAZEBO_MODEL_PATH\n\
+export GAZEBO_WORLD_PATH=/workspace/worlds:$GAZEBO_WORLD_PATH\n\
+exec "$@"' > /workspace/scripts/gazebo-sim.sh && \
+    chmod +x /workspace/scripts/gazebo-sim.sh
+
+# Default command
+CMD ["bash"]

@@ -1,0 +1,122 @@
+# Development Environment Dockerfile
+FROM autonomy:ros2-core
+
+# Switch to root for installation
+USER root
+
+# Install development tools
+RUN apt-get update && apt-get install -y \
+    vim \
+    nano \
+    git \
+    wget \
+    build-essential \
+    cmake \
+    python3-dev \
+    python3-pip \
+    python3-setuptools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python development packages
+RUN pip3 install \
+    numpy \
+    scipy \
+    matplotlib \
+    pandas \
+    jupyter \
+    notebook \
+    ipython \
+    && rm -rf ~/.cache/pip
+
+# Install ROS 2 development tools
+RUN apt-get update && apt-get install -y \
+    ros-humble-rviz2 \
+    ros-humble-rqt \
+    ros-humble-rqt-common-plugins \
+    ros-humble-tf-transformations \
+    ros-humble-angles \
+    ros-humble-pluginlib \
+    ros-humble-urdf \
+    python3-tk \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install autonomy-specific dependencies
+# OpenCV is already available via ROS2 system packages (python3-opencv)
+# Install PyTorch for arm64 using pip with specific wheel URL
+RUN pip3 install \
+    torch torchvision torchaudio \
+    --index-url https://download.pytorch.org/whl/cpu \
+    && pip3 install opencv-python \
+    && rm -rf ~/.cache/pip
+
+# Install additional development tools
+RUN pip3 install \
+    pytest \
+    pytest-cov \
+    pytest-mock \
+    black \
+    flake8 \
+    mypy \
+    pre-commit \
+    && rm -rf ~/.cache/pip
+
+# Install Git LFS for large files
+RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+RUN apt-get install -y git-lfs && rm -rf /var/lib/apt/lists/*
+RUN git lfs install
+
+# Set up development workspace
+RUN mkdir -p /workspace/data /workspace/models /workspace/calibration
+WORKDIR /workspace
+
+# Clone essential ROS 2 packages for autonomy
+# Clone additional ROS packages (will be built as needed)
+# RUN git clone -b humble https://github.com/ros-planning/navigation2.git ros2_ws/src/navigation2 && \
+#     git clone -b humble https://github.com/ros-perception/vision_opencv.git ros2_ws/src/vision_opencv && \
+#     git clone -b humble https://github.com/ros-simulation/gazebo_ros2_control.git ros2_ws/src/gazebo_ros2_control
+
+# Build the autonomy workspace (skip for now - will be built at runtime)
+# RUN cd ros2_ws && \
+#     bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install"
+
+# Setup environment for development
+RUN echo "source /workspace/ros2_ws/install/setup.bash" >> ~/.bashrc
+RUN echo "export PYTHONPATH=/workspace:\$PYTHONPATH" >> ~/.bashrc
+RUN echo "export PATH=/workspace/scripts:\$PATH" >> ~/.bashrc
+
+# Install development utilities
+RUN apt-get update && apt-get install -y \
+    htop \
+    iotop \
+    ncdu \
+    tree \
+    tmux \
+    screen \
+    && rm -rf /var/lib/apt/lists/*
+
+# Switch back to ros user
+USER ros
+WORKDIR /workspace
+
+# Setup user environment
+RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \
+    echo "source /workspace/ros2_ws/install/setup.bash" >> ~/.bashrc && \
+    echo "export ROS_DOMAIN_ID=42" >> ~/.bashrc && \
+    echo "export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST" >> ~/.bashrc && \
+    echo "alias ..='cd ..'" >> ~/.bashrc && \
+    echo "alias ...='cd ../..'" >> ~/.bashrc && \
+    echo "alias ll='ls -alF'" >> ~/.bashrc && \
+    echo "alias la='ls -A'" >> ~/.bashrc && \
+    echo "alias l='ls -CF'" >> ~/.bashrc
+
+# Create development scripts (ensure permissions)
+USER root
+RUN mkdir -p /workspace/scripts && chmod 755 /workspace/scripts
+RUN echo '#!/bin/bash\n\
+source /opt/ros/humble/setup.bash\n\
+source /workspace/ros2_ws/install/setup.bash\n\
+exec "$@"' > /workspace/scripts/ros2-dev.sh && \
+    chmod +x /workspace/scripts/ros2-dev.sh
+
+# Default command
+CMD ["bash"]

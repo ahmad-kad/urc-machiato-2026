@@ -1,0 +1,59 @@
+[
+  {
+    "date": "2025-10-16",
+    "velocity_score": 20.0,
+    "blockers": [],
+    "progress": {
+      "overall_progress": 18.212418300653596,
+      "subsystems": 6,
+      "on_track": false
+    },
+    "recommendations": [
+      "\ud83c\udfaf Focus on MVP completion today",
+      "\ud83d\udd17 Test integration points early",
+      "\ud83d\udcdd Commit small, frequent changes",
+      "\ud83d\udc65 Communicate blockers immediately",
+      "\u26a1 Increase development velocity - aim for 5+ commits today",
+      "\ud83c\udfaf Prioritize critical path items over nice-to-have features"
+    ],
+    "risk_level": "MEDIUM"
+  },
+  {
+    "date": "2025-10-16",
+    "velocity_score": 20.0,
+    "blockers": [],
+    "progress": {
+      "overall_progress": 18.212418300653596,
+      "subsystems": 6,
+      "on_track": false
+    },
+    "recommendations": [
+      "\ud83c\udfaf Focus on MVP completion today",
+      "\ud83d\udd17 Test integration points early",
+      "\ud83d\udcdd Commit small, frequent changes",
+      "\ud83d\udc65 Communicate blockers immediately",
+      "\u26a1 Increase development velocity - aim for 5+ commits today",
+      "\ud83c\udfaf Prioritize critical path items over nice-to-have features"
+    ],
+    "risk_level": "MEDIUM"
+  },
+  {
+    "date": "2025-10-16",
+    "velocity_score": 20.0,
+    "blockers": [],
+    "progress": {
+      "overall_progress": 9.423202614379084,
+      "subsystems": 6,
+      "on_track": false
+    },
+    "recommendations": [
+      "\ud83c\udfaf Focus on MVP completion today",
+      "\ud83d\udd17 Test integration points early",
+      "\ud83d\udcdd Commit small, frequent changes",
+      "\ud83d\udc65 Communicate blockers immediately",
+      "\u26a1 Increase development velocity - aim for 5+ commits today",
+      "\ud83c\udfaf Prioritize critical path items over nice-to-have features"
+    ],
+    "risk_level": "MEDIUM"
+  }
+]

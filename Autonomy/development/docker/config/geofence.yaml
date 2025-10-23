@@ -1,0 +1,61 @@
+# Geofence Configuration
+# Defines safe operating boundaries for the rover
+
+# Coordinate System
+datum: WGS84
+
+# Boundary Definition (polygon vertices in lat/lon)
+boundary:
+  - [37.123456, -110.987654]  # Point 1
+  - [37.123456, -110.876543]  # Point 2
+  - [37.234567, -110.876543]  # Point 3
+  - [37.234567, -110.987654]  # Point 4
+
+# Safety Margins
+safety_margin: 10.0  # meters inside boundary
+
+# Altitude Limits (if applicable)
+altitude:
+  min: -10.0  # meters
+  max: 100.0  # meters
+
+# Velocity Limits within Geofence
+velocity_limits:
+  max_linear: 2.0    # m/s
+  max_angular: 1.0   # rad/s
+
+# Warning Zones
+warning_zones:
+  - name: "Communication Shadow"
+    type: "circle"
+    center: [37.178901, -110.923456]
+    radius: 25.0  # meters
+    warning_level: "caution"
+
+  - name: "Terrain Hazard"
+    type: "polygon"
+    vertices:
+      - [37.156789, -110.945678]
+      - [37.167890, -110.934567]
+      - [37.178901, -110.945678]
+    warning_level: "danger"
+
+# Emergency Procedures
+emergency_procedures:
+  boundary_violation:
+    - action: "stop_motors"
+      immediate: true
+    - action: "sound_alarm"
+      duration: 5.0
+    - action: "notify_operator"
+      message: "Geofence violation detected"
+    - action: "return_to_safe_zone"
+      enabled: true
+
+  communication_loss:
+    - action: "reduce_speed"
+      target_velocity: 0.5
+    - action: "activate_beacon"
+      enabled: true
+    - action: "initiate_return"
+      timeout: 300  # seconds
