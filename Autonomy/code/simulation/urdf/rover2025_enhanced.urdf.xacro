@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://wiki.ros.org/xacro" name="rover2025_enhanced">
 
-  <!-- Import original URDF structure -->
-  <xacro:include filename="$(find autonomy_simulation)/urdf/rover2025_base.urdf.xacro" />
+  <!-- Import fixed URDF structure -->
+  <xacro:include filename="$(find autonomy_simulation)/urdf/rover2025_fixed.urdf.xacro" />
 
   <!-- ROS2 Control Configuration -->
   <xacro:property name="robot_name" value="rover2025" />

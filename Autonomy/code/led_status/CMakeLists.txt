@@ -21,6 +21,18 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}
 )
 
+# Install launch files
+install(FILES
+  launch/led_status.launch.py
+  DESTINATION share/${PROJECT_NAME}/launch
+)
+
+# Install config files
+install(FILES
+  config/led_status_config.yaml
+  DESTINATION share/${PROJECT_NAME}/config
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()

@@ -15,16 +15,16 @@ setup(
         (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
         (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'structlog'],
     zip_safe=True,
     maintainer='URC 2026 Team',
     maintainer_email='team@urc2026.edu',
-    description='Central state management system for URC 2026 autonomy',
+    description='Hierarchical state machine for URC 2026 rover autonomy',
     license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'state_management_node = autonomy_state_management.state_management_node:main',
+            'state_machine_director = autonomy_state_management.state_machine_director:main',
         ],
     },
 )

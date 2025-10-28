@@ -6,33 +6,49 @@ Handles LED signaling for:
 - 🔴 Red: Autonomous operation
 - 🔵 Blue: Teleoperation (manual driving)
 - 🟢 Flashing Green: Successful target arrival
+- 🟡 Yellow: Calibration and boot states
+- ⚪ White: Idle/ready state
 
 Competition Requirements:
 - LED status must be judge-visible from 50m distance
 - Colors must clearly indicate rover operational mode
 - Success indication requires flashing green pattern
+- Integration with hierarchical state management system
 """
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 from std_msgs.msg import String
 import time
 import threading
+from enum import Enum
 
 # LED color definitions
-class LEDColor:
+class LEDColor(Enum):
     RED = "red"
     BLUE = "blue"
     GREEN = "green"
+    YELLOW = "yellow"
+    WHITE = "white"
     OFF = "off"
+
+# LED pattern definitions
+class LEDPattern(Enum):
+    SOLID = "solid"
+    BLINK = "blink"
+    FAST_BLINK = "fast_blink"
+    FADE = "fade"
+    PULSE = "pulse"
 
 class LEDController(Node):
     """
     ROS2 node for controlling competition LED status signaling.
 
     Subscribes to:
-    - /system_mode: Current system operating mode
-    - /mission_status: Current mission progress state
+    - /state_machine/led_info: LED information from state machine
+    - /state_machine/system_state: Current system state
+    - /mission_status: Current mission progress state (legacy)
 
     Controls LED hardware to provide visual status indication.
     """
@@ -40,31 +56,49 @@ class LEDController(Node):
     def __init__(self):
         super().__init__('led_controller')
 
-        # ROS2 subscriptions
-        self.system_mode_sub = self.create_subscription(
-            String,
-            'system_mode',
-            self.system_mode_callback,
-            10
+        # QoS profile for reliable communication
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.VOLATILE,
+            depth=10
         )
 
+        # ROS2 subscriptions
+        self.led_info_sub = self.create_subscription(
+            String,
+            '/state_machine/led_info',
+            self.led_info_callback,
+            qos_profile
+        )
+
+        self.system_state_sub = self.create_subscription(
+            String,
+            '/state_machine/system_state',
+            self.system_state_callback,
+            qos_profile
+        )
+
+        # Legacy mission status subscription for backward compatibility
         self.mission_status_sub = self.create_subscription(
             String,
-            'mission_status',
+            '/mission_status',
             self.mission_status_callback,
-            10
+            qos_profile
         )
 
         # Current state
-        self.current_mode = "idle"
+        self.current_led_info = "UNKNOWN_STATE"
+        self.current_system_state = "UNKNOWN"
         self.current_mission_status = "pre_mission"
         self.success_flashing = False
         self.flash_thread = None
+        self.current_pattern = LEDPattern.SOLID
+        self.current_color = LEDColor.OFF
 
         # Initialize LED hardware (placeholder for actual hardware)
         self.initialize_led_hardware()
 
-        self.get_logger().info('LED Controller initialized')
+        self.get_logger().info('LED Controller initialized with state management integration')
 
     def initialize_led_hardware(self):
         """
@@ -81,69 +115,129 @@ class LEDController(Node):
             self.get_logger().error(f'Failed to initialize LED hardware: {e}')
             # Continue with software-only mode for testing
 
-    def system_mode_callback(self, msg):
+    def led_info_callback(self, msg: String):
         """
-        Handle system mode changes.
+        Handle LED information from state machine.
 
-        Competition Requirements:
-        - 🔴 Red during autonomous operation
-        - 🔵 Blue during teleoperation
+        This is the primary method for LED control based on state management.
         """
-        new_mode = msg.data
-        self.get_logger().info(f'System mode changed to: {new_mode}')
+        led_info = msg.data
+        self.get_logger().debug(f'LED info received: {led_info}')
 
-        if new_mode != self.current_mode:
-            self.current_mode = new_mode
+        if led_info != self.current_led_info:
+            self.current_led_info = led_info
+            self.process_led_info(led_info)
 
-            # Stop any ongoing flashing
-            self.stop_success_flashing()
-
-            # Set LED based on mode
-            if new_mode == "autonomous":
-                self.set_led_color(LEDColor.RED)
-            elif new_mode == "teleoperation" or new_mode == "manual_override":
-                self.set_led_color(LEDColor.BLUE)
-            elif new_mode == "idle":
-                self.set_led_color(LEDColor.OFF)
-            else:
-                self.get_logger().warning(f'Unknown system mode: {new_mode}')
-
-    def mission_status_callback(self, msg):
+    def system_state_callback(self, msg: String):
         """
-        Handle mission status changes.
+        Handle system state changes from state machine.
+
+        This provides additional context for LED control decisions.
+        """
+        system_state = msg.data
+        self.get_logger().debug(f'System state changed to: {system_state}')
+        self.current_system_state = system_state
+
+    def mission_status_callback(self, msg: String):
+        """
+        Handle mission status changes (legacy support).
 
         Competition Requirements:
         - 🟢 Flashing Green on successful target arrival
         """
         new_status = msg.data
-        self.get_logger().info(f'Mission status changed to: {new_status}')
+        self.get_logger().debug(f'Mission status changed to: {new_status}')
 
         self.current_mission_status = new_status
 
-        # Check for success condition
-        if new_status == "completed" or "arrived" in new_status:
-            self.start_success_flashing()
-        elif new_status in ["failed", "emergency", "idle"]:
-            self.stop_success_flashing()
-            if self.current_mode == "idle":
-                self.set_led_color(LEDColor.OFF)
+        # Check for success condition (only if not already flashing)
+        if not self.success_flashing:
+            if new_status == "completed" or "arrived" in new_status:
+                self.start_success_flashing()
+            elif new_status in ["failed", "emergency", "idle"]:
+                self.stop_success_flashing()
 
-    def set_led_color(self, color):
+    def process_led_info(self, led_info: str):
         """
-        Set LED to specified color.
+        Process LED information from state machine and set appropriate LED state.
+
+        Args:
+            led_info: LED information string from state machine
+        """
+        # Stop any ongoing flashing when processing new LED info
+        self.stop_success_flashing()
+
+        # Parse LED information and set appropriate color/pattern
+        if led_info == "AUTONOMOUS_RED":
+            self.set_led_state(LEDColor.RED, LEDPattern.SOLID)
+            
+        elif led_info == "TELEOPERATION_BLUE":
+            self.set_led_state(LEDColor.BLUE, LEDPattern.SOLID)
+            
+        elif led_info == "SAFETY_RED_BLINK":
+            self.set_led_state(LEDColor.RED, LEDPattern.FAST_BLINK)
+            
+        elif led_info == "BOOT_INITIALIZING":
+            self.set_led_state(LEDColor.YELLOW, LEDPattern.BLINK)
+            
+        elif led_info == "CALIBRATION_YELLOW":
+            self.set_led_state(LEDColor.YELLOW, LEDPattern.SOLID)
+            
+        elif led_info == "IDLE_GREEN":
+            self.set_led_state(LEDColor.GREEN, LEDPattern.SOLID)
+            
+        elif led_info == "SHUTDOWN_RED_FADE":
+            self.set_led_state(LEDColor.RED, LEDPattern.FADE)
+            
+        elif led_info == "WAYPOINT_SUCCESS":
+            self.start_success_flashing()
+            
+        elif led_info == "TRANSITION_IN_PROGRESS":
+            self.set_led_state(LEDColor.WHITE, LEDPattern.PULSE)
+            
+        elif led_info.startswith("ERROR_"):
+            error_type = led_info.replace("ERROR_", "")
+            self.set_led_state(LEDColor.RED, LEDPattern.FAST_BLINK)
+            self.get_logger().warn(f'Error LED pattern set for: {error_type}')
+            
+        elif led_info.startswith("SUCCESS_"):
+            success_type = led_info.replace("SUCCESS_", "")
+            self.start_success_flashing()
+            self.get_logger().info(f'Success LED pattern set for: {success_type}')
+            
+        else:
+            self.get_logger().warning(f'Unknown LED info: {led_info}')
+            self.set_led_state(LEDColor.OFF, LEDPattern.SOLID)
+
+    def set_led_state(self, color: LEDColor, pattern: LEDPattern):
+        """
+        Set LED to specified color and pattern.
+
+        Args:
+            color: LEDColor enum value
+            pattern: LEDPattern enum value
+        """
+        try:
+            self.current_color = color
+            self.current_pattern = pattern
+            
+            if hasattr(self, 'led_hardware'):
+                self.led_hardware.set_color_and_pattern(color, pattern)
+            else:
+                # Software simulation
+                self.get_logger().info(f'LED set to: {color.value} {pattern.value} (simulation)')
+
+        except Exception as e:
+            self.get_logger().error(f'Failed to set LED state: {e}')
+
+    def set_led_color(self, color: LEDColor):
+        """
+        Set LED to specified color (legacy method for backward compatibility).
 
         Args:
             color: LEDColor enum value
         """
-        try:
-            if hasattr(self, 'led_hardware'):
-                self.led_hardware.set_color(color)
-            else:
-                # Software simulation
-                self.get_logger().info(f'LED set to: {color} (simulation)')
-
-        except Exception as e:
-            self.get_logger().error(f'Failed to set LED color: {e}')
+        self.set_led_state(color, LEDPattern.SOLID)
 
     def start_success_flashing(self):
         """
@@ -210,12 +304,13 @@ class LEDHardwareInterface:
         # - Serial communication to microcontroller
         pass
 
-    def set_color(self, color):
+    def set_color_and_pattern(self, color: LEDColor, pattern: LEDPattern):
         """
-        Set LED to specified color.
+        Set LED to specified color and pattern.
 
         Args:
             color: LEDColor enum value
+            pattern: LEDPattern enum value
         """
         # TODO: Implement actual hardware control
         # Example GPIO implementation:
@@ -228,9 +323,36 @@ class LEDHardwareInterface:
             GPIO.output(RED_PIN, GPIO.LOW)
             GPIO.output(BLUE_PIN, GPIO.HIGH)
             GPIO.output(GREEN_PIN, GPIO.LOW)
+        elif color == LEDColor.GREEN:
+            GPIO.output(RED_PIN, GPIO.LOW)
+            GPIO.output(BLUE_PIN, GPIO.LOW)
+            GPIO.output(GREEN_PIN, GPIO.HIGH)
         # etc.
+        
+        # Handle patterns
+        if pattern == LEDPattern.BLINK:
+            # Implement blinking logic
+            pass
+        elif pattern == LEDPattern.FAST_BLINK:
+            # Implement fast blinking logic
+            pass
+        elif pattern == LEDPattern.FADE:
+            # Implement fading logic with PWM
+            pass
+        elif pattern == LEDPattern.PULSE:
+            # Implement pulsing logic
+            pass
         """
         pass
+
+    def set_color(self, color: LEDColor):
+        """
+        Set LED to specified color (legacy method).
+
+        Args:
+            color: LEDColor enum value
+        """
+        self.set_color_and_pattern(color, LEDPattern.SOLID)
 
 
 def main(args=None):

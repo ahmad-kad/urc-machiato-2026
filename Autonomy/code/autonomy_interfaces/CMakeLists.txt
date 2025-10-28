@@ -16,6 +16,11 @@ set(msg_files
   "msg/TypingGoal.msg"
   "msg/LedCommand.msg"
   "msg/CameraCommand.msg"
+  "msg/SystemState.msg"
+  "msg/StateTransition.msg"
+  "msg/SafetyStatus.msg"
+  "msg/FollowMeStatus.msg"
+  "msg/ArmAlignmentCommand.msg"
 )
 
 set(srv_files
@@ -25,6 +30,12 @@ set(srv_files
   "srv/CalibrateCamera.srv"
   "srv/LoadCalibrationParameters.srv"
   "srv/ValidateCalibration.srv"
+  "srv/ChangeState.srv"
+  "srv/GetSystemState.srv"
+  "srv/RecoverFromSafety.srv"
+  "srv/DetectAruco.srv"
+  "srv/FollowMeControl.srv"
+  "srv/DetectMissionAruco.srv"
 )
 
 set(action_files
@@ -42,6 +53,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
     geometry_msgs
     sensor_msgs
     nav_msgs
+    builtin_interfaces
 )
 
 if(BUILD_TESTING)

@@ -1,14 +1,14 @@
 <robot name="rover2025" version="1.0">
-  <joint name="camera1" type="fixed">
-    <origin rpy="-0.00000 1.57080 0.00000" xyz="0.33301 -0.09643 0.81950"/>
-    <parent link="robot_root"/>
-    <child link="new_link.000"/>
-  </joint>
   <joint name="gps_locator" type="fixed">
     <origin rpy="0.00000 0.00000 0.00000" xyz="0.09323 0.00000 0.65743"/>
     <parent link="robot_root"/>
     <child link="gps"/>
     <axis xyz="0.00000 0.00000 1.00000"/>
+  </joint>
+  <joint name="robot_base_joint" type="fixed">
+    <origin rpy="-0.00000 -0.00000 0.00000" xyz="0.00000 0.00000 -0.00050"/>
+    <parent link="robot_root"/>
+    <child link="robot_base"/>
   </joint>
   <joint name="wheel_R_front" type="continuous">
     <limit effort="0.00000" velocity="0.00000"/>
@@ -17,10 +17,10 @@
     <child link="robot_wheel_l_front_actuator_link.009"/>
     <axis xyz="0.00000 -1.00000 0.00000"/>
   </joint>
-  <joint name="robot_base_joint" type="fixed">
-    <origin rpy="-0.00000 -0.00000 0.00000" xyz="0.00000 0.00000 -0.00050"/>
-    <parent link="robot_root"/>
-    <child link="robot_base"/>
+  <joint name="imu_joint" type="fixed">
+    <origin rpy="-0.00000 0.00000 -0.00000" xyz="-0.00000 -0.00000 0.43039"/>
+    <parent link="robot_base"/>
+    <child link="imu"/>
   </joint>
   <joint name="rotate_L_back" type="revolute">
     <limit lower="-2.96706" upper="2.96706" effort="0.00000" velocity="0.00000"/>
@@ -73,23 +73,15 @@
   </joint>
   <link name="robot_root">
     <collision name="body_collision">
-      <origin rpy="0.00000 0.00000 0.00000" xyz="-0.01465 -0.00549 0.16037"/>
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.00000 0.00000 0.00000"/>
       <geometry>
-        <box size="1.22213 0.86180 0.62853"/>
+        <box size="5.69672 4.01711 2.92977"/>
       </geometry>
     </collision>
   </link>
-  <link name="new_link.000">
-    <sensor name="rgbd" type="camera">
-      <origin rpy="0.00000 0.00000 0.00000" xyz="-0.00000 0.00000 0.00000"/>
-      <parent link="new_link.000"/>
-      <camera>
-        <image>
-          <width>1080</width>
-          <height>1920</height>
-          <hfov>1.57080</hfov>
-        </image>
-      </camera>
+  <link name="gps">
+    <sensor name="gps.001" type="GPS">
+      <parent link="gps"/>
     </sensor>
   </link>
   <link name="robot_wheel_l_front_actuator_link.008">
@@ -108,9 +100,9 @@
   </link>
   <link name="robot_wheel_l_front_actuator_link.009">
     <collision name="wheel-r-1_collision">
-      <origin rpy="-1.48431 1.57080 -3.05510" xyz="-0.00072 0.00138 0.00304"/>
+      <origin rpy="0.00000 -0.00000 3.14159" xyz="-0.57753 0.32063 -0.16871"/>
       <geometry>
-        <cylinder radius="0.16928" length="0.15235"/>
+        <cylinder radius="0.78907" length="0.71014"/>
       </geometry>
     </collision>
     <visual name="wheel-r-1">
@@ -121,11 +113,6 @@
       </geometry>
     </visual>
   </link>
-  <link name="gps">
-    <sensor name="gps.001" type="GPS">
-      <parent link="gps"/>
-    </sensor>
-  </link>
   <link name="robot_base">
     <visual name="body">
       <material name="None"/>
@@ -134,6 +121,11 @@
         <box size="1.09671 0.77336 0.78564"/>
       </geometry>
     </visual>
+  </link>
+  <link name="imu">
+    <sensor name="imu-sensor" type="imu">
+      <parent link="imu"/>
+    </sensor>
   </link>
   <link name="robot_wheel_l_front_actuator_link.005">
     <inertial>
@@ -151,9 +143,9 @@
   </link>
   <link name="robot_wheel_l_front_actuator_link.006">
     <collision name="wheel-l-2_collision">
-      <origin rpy="-1.65729 1.57080 -0.08649" xyz="-0.00000 0.00000 0.00000"/>
+      <origin rpy="0.00000 0.00000 0.00000" xyz="-0.43705 0.37063 -0.16871"/>
       <geometry>
-        <cylinder radius="0.16855" length="0.20103"/>
+        <cylinder radius="0.78567" length="0.93707"/>
       </geometry>
     </collision>
     <visual name="wheel-l-2">
@@ -180,9 +172,9 @@
   </link>
   <link name="robot_wheel_l_front_actuator_link.004">
     <collision name="wheel-l-1_collision">
-      <origin rpy="-1.50651 1.57080 0.06429" xyz="0.00087 0.00096 0.00304"/>
+      <origin rpy="0.00000 0.00000 0.00000" xyz="0.57753 0.37063 -0.16871"/>
       <geometry>
-        <cylinder radius="0.16882" length="0.18304"/>
+        <cylinder radius="0.78693" length="0.85322"/>
       </geometry>
     </collision>
     <visual name="wheel-l-1">
@@ -209,9 +201,9 @@
   </link>
   <link name="robot_wheel_l_front_actuator_link.012">
     <collision name="wheel-r-2_collision">
-      <origin rpy="-1.51965 1.57080 -3.09044" xyz="0.00003 0.00215 0.00094"/>
+      <origin rpy="0.00000 -0.00000 3.14159" xyz="0.43705 0.32063 -0.16871"/>
       <geometry>
-        <cylinder radius="0.16593" length="0.16927"/>
+        <cylinder radius="0.77344" length="0.78904"/>
       </geometry>
     </collision>
     <visual name="wheel-r-2">
