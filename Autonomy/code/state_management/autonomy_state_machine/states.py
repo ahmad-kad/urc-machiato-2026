@@ -56,6 +56,32 @@ class EquipmentServicingSubstate(Enum):
         return self.value
 
 
+class CalibrationSubstate(Enum):
+    """
+    Substates for detailed calibration procedures.
+
+    URC 2026 Competition Requirements:
+    - Camera intrinsic calibration (required for accurate computer vision)
+    - Camera extrinsic calibration (hand-eye calibration for manipulation)
+    - System validation and integration testing
+    """
+
+    NONE = "NONE"  # Not in calibration
+    SETUP = "SETUP"  # Environment setup and target preparation
+    INTRINSIC_CAPTURE = "INTRINSIC_CAPTURE"  # Capture images for intrinsic calibration
+    INTRINSIC_CALIBRATION = "INTRINSIC_CALIBRATION"  # Compute intrinsic parameters
+    INTRINSIC_VALIDATION = "INTRINSIC_VALIDATION"  # Validate intrinsic calibration quality
+    EXTRINSIC_SETUP = "EXTRINSIC_SETUP"  # Prepare for hand-eye calibration
+    EXTRINSIC_CAPTURE = "EXTRINSIC_CAPTURE"  # Capture robot-camera pose pairs
+    EXTRINSIC_CALIBRATION = "EXTRINSIC_CALIBRATION"  # Compute hand-eye transformation
+    EXTRINSIC_VALIDATION = "EXTRINSIC_VALIDATION"  # Validate extrinsic calibration
+    INTEGRATION_TEST = "INTEGRATION_TEST"  # Test full vision-manipulation pipeline
+    COMPLETE = "COMPLETE"  # Calibration complete, ready for autonomous ops
+
+    def __str__(self) -> str:
+        return self.value
+
+
 @dataclass
 class StateMetadata:
     """

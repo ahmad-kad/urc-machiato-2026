@@ -8,11 +8,8 @@ and coordinates recovery procedures.
 from enum import Enum, auto
 from dataclasses import dataclass
 from typing import List, Optional, Dict
-import structlog
 
 from .states import SystemState, AutonomousSubstate
-
-logger = structlog.get_logger(__name__)
 
 
 class SafetyTriggerType(Enum):
@@ -71,8 +68,9 @@ class SafetyManager:
     current state and mission phase.
     """
 
-    def __init__(self):
+    def __init__(self, logger=None):
         """Initialize the safety manager."""
+        self.logger = logger  # Will be set by state machine director
         self._active_triggers: Dict[SafetyTriggerType, SafetySeverity] = {}
         self._trigger_history: List[Dict] = []
         self._battery_level: float = 100.0
@@ -106,24 +104,24 @@ class SafetyManager:
         }
         self._trigger_history.append(trigger_info)
 
-        logger.warning(
-            "Safety triggered",
-            trigger_type=str(trigger_type),
-            severity=str(severity),
-            description=description,
-            source=source,
-        )
+        if self.logger:
+            self.logger.warning(
+                f"Safety triggered: {trigger_type.value} ({severity.value}) - {description} "
+                f"(source: {source})"
+            )
 
     def clear_trigger(self, trigger_type: SafetyTriggerType) -> None:
         """Clear a specific safety trigger."""
         if trigger_type in self._active_triggers:
             del self._active_triggers[trigger_type]
-            logger.info("Safety trigger cleared", trigger_type=str(trigger_type))
+            if self.logger:
+                self.logger.info(f"Safety trigger cleared: {trigger_type.value}")
 
     def clear_all_triggers(self) -> None:
         """Clear all active safety triggers."""
         self._active_triggers.clear()
-        logger.info("All safety triggers cleared")
+        if self.logger:
+            self.logger.info("All safety triggers cleared")
 
     def get_active_triggers(self) -> List[SafetyTriggerType]:
         """Get list of currently active safety triggers."""
@@ -166,12 +164,10 @@ class SafetyManager:
         Returns:
             RecoveryBehavior object describing recovery procedure
         """
-        logger.info(
-            "Determining recovery behavior",
-            trigger_type=str(trigger_type),
-            current_state=str(current_state),
-            mission_phase=str(mission_phase) if mission_phase else None,
-        )
+        if self.logger:
+            self.logger.info(
+                f"Determining recovery behavior for {trigger_type.value} in {current_state.value} state"
+            )
 
         # Emergency stop always requires manual intervention
         if trigger_type == SafetyTriggerType.EMERGENCY_STOP:

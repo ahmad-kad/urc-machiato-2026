@@ -563,6 +563,9 @@ slam_config = {
 
 ## Support and Documentation
 
+### Quick Start Guides
+- **[Practical Workflow Guide](PRACTICAL_WORKFLOW.md)** - Step-by-step guide for camera calibration and ArUco testing
+
 ### Related Documents
 - [`CameraCalibrationGuide.md`](../reference/CameraCalibrationGuide.md) - Detailed concepts and procedures
 - [`CalibrationGuide.md`](../reference/CalibrationGuide.md) - Hardware-specific calibration

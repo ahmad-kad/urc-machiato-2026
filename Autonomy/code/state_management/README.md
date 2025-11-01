@@ -13,6 +13,8 @@ Hierarchical, event-driven state machine for the URC 2026 rover providing centra
 - [API Reference](#api-reference)
 - [Testing](#testing)
 - [URC Competition Integration](#urc-competition-integration)
+- [Feature Documentation](#feature-documentation)
+- [Development Tools](#development-tools)
 
 ## Overview
 
@@ -504,6 +506,23 @@ ros2 topic info /state_machine/current_state
 # Check for errors
 ros2 node info /state_machine_director
 ```
+
+## Feature Documentation
+
+Detailed documentation for specific features:
+
+- **[State Machine Analysis](docs/state_machine_analysis.md)** - Comprehensive system analysis and interface documentation
+- **[Follow Me Feature](docs/FOLLOW_ME_FEATURE.md)** - Autonomous person following using ArUco tags
+- **[Mission ArUco Detection](docs/MISSION_ARUCO_DETECTION.md)** - Enhanced ArUco detection for mission operations
+- **[State Diagrams](docs/STATE_DIAGRAM.md)** - Visual state machine diagrams
+
+## Development Tools
+
+Development and testing utilities:
+
+- **[State Transition Simulator](tools/state_transition_simulator.py)** - Interactive state machine testing
+- **[Core State Tests](tools/test_core_states.py)** - Fundamental state machine validation
+- **[Race Condition Test](test_race_conditions.py)** - Concurrency validation
 
 ## Contributing
 
